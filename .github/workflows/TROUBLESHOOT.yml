@@ -65,6 +65,12 @@ jobs:
         
         
 
+      - name: Set up Python 3.12
+        if: runner.os == 'Linux'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          
       # On Linux
       - name: Run setup, Install valgrind, run test and build
         if: runner.os == 'Linux'
