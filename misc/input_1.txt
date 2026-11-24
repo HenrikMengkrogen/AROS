@@ -1,2 +1,35 @@
-Sequence: NNNSSNNKNNNNNNNNNNKNNNNNNNNKNNNNNNNNNNNNNNNNNNNNNKNNNSNNNNSNNKNNNNNKNNNNKNNNNNNNNNNKNNNNKNNNNKNNNNSS
-Structure: ...((((((......((((((....))))))(((((.....)))))((((((.(....)))))))(((((((((((....))))))))))).))))..))
+>Origami
+
+Sequence: NNNKNNSSNNNKNNNAANNNNNNANNNKNNNNNKNNNKNNGGUGGCAUAAAUUCUCCCCAAUCGUGGCGUGUCGGCCUGCUUCGGCAGGCACUGGCGCCGGGAGAGCCNNKNNNKNNNNNKNNNKNNNUUCGNNNKNNNKNNNSSNNNNKNNNNGAGCCUCCCCAAUCGUGGCGUGUCGGCCUGCUUCGGCAGGCACUGGCGCCGGGAGGUGAUGCAAAUUCNNNNKNNNNNNNKNNNAANNNNNNANNNKNNNNNKNNNNKNNNSSNNNKNNNAANNNNNNANNNKNNNGGUGGGCCAAAUUCNNKNNNKNNUUCGNNKNNNKNNGAGCCNNNNNNKNNNNUUCGNNNNKNNNNNNSSGAGCCNNNNNKNNNUUCGNNNKNNNNNGGUGGGCCAAAUUCNNNKNNNAANNNNNNANNNKNNNNNNKN
+
+Structure: (((((((((((((((..[[[[[[.)))))))((((((((((((.........((((((.......(((((....((((((....))))))....)))))))))))))))))))))))(((((((((((....)))))))))))))(((((((((((.((((((.......(((((....((((((....))))))....)))))))))))(.......).)))))))))))(((((((..[[[[[[.)))))))))))))((((((((((((((..]]]]]].)))))))(((.......).(((((((((((....))))))))))).))(((((((((((....)))))))))))))((((((((((((((....)))))))))))).........))(((((((..]]]]]].))))))))))))
+
+             ╭A───CCGG─╮                                               ╭A───UACG─╮                                  
+             ╰AAU──╮   │                                               ╰AAU──╮   │                                  
+                 ╭─┼──G╯              ╭───────╮                            ╭─┼──G╯                                  
+╭CGNNNKNNNNN─GGU─╯ ╰─UC──────NNNKNNNAA┼─NNNNNN╯╭─ANNNKNNN────NNKNNNKNN─GGU─╯ ╰─UC──UCCC─CAAUCGU─GGCGU─GUCG─GCCUGCUU╮
+│  ┊┊┊┊┊┊┊┊┊ ┊┊┊     ┊┊      ┊┊┊┊┊┊┊  │ ┊┊┊┊┊┊ │  ┊┊┊┊┊┊┊    ┊┊┊┊┊┊┊┊┊ ┊┊┊     ┊┊  ┊┊┊┊         ┊┊┊┊┊      ┊┊┊┊┊┊  │
+╰UUNNNKNNNNN─CCG─────AG──╮╭──NNNKNNNA─╯╭NNNNNN─┼AANNNKNNN╮╭──NNKNNNKNN─CCG─────AG──AGGG─────────CCGCG─GUCA─CGGACGGC╯
+                         ││            ╰───────╯         ││                                                         
+                         │╰──────────────────────╮       │╰────────────────╮                                        
+                         ╰──────────────────────╮│       ╰────────────────╮│                                        
+                                                ↑↓                        ↑↓                                        
+                          ╭CGNNNNKNNNNNN────SS──╯╰NNNKN─3 5─NNNKNN────SS──╯╰NNNKNNNKNNNUU╮                          
+                          │  ┊┊┊┊┊┊┊┊┊┊┊    ┊┊    ┊┊┊┊┊     ┊┊┊┊┊┊    ┊┊    ┊┊┊┊┊┊┊┊┊┊┊  │                          
+                          ╰UUNNNNKNNNNNN╮╭──SS────NNNKN─────NNNKNN╮╭──SS────NNNKNNNKNNNGC╯                          
+                           ╭────────────╯│                 ╭──────╯│                                                
+                           │╭────────────╯                 │╭──────╯                                                
+                           ↑↓                              ↑↓                                                       
+                           ││         ╭───────╮            ││                                                       
+╭CGNNKNNNKNN──GA─────GCC───╯╰NNNKNNNAA┼─NNNNNN╯╭─ANNNKNNN──╯╰NNNNKNNNN──GA─────GCC─UCCC─CAAUCGU─GGCGU─GUCG─GCCUGCUU╮
+│  ┊┊┊┊┊┊┊┊┊  ┊┊      ┊┊     ┊┊┊┊┊┊┊  │ ┊┊┊┊┊┊ │  ┊┊┊┊┊┊┊    ┊┊┊┊┊┊┊┊┊  ┊┊      ┊┊ ┊┊┊┊         ┊┊┊┊┊      ┊┊┊┊┊┊  │
+╰UUNNKNNNKNN──CU─╮ ╭─UGG─────NNNKNNNA─╯╭NNNNNN─┼AANNNKNNN────NNNNKNNNN──CU─╮ ╭─UGG─AGGG─────────CCGCG─GUCA─CGGACGGC╯
+             ╭G──┼─╯ ┊                 ╰───────╯                       ╭G──┼─╯ ┊                                    
+             │   ╰──UAA╮                                               │   ╰──UAA╮                                  
+             ╰─GGCC───A╯                                               ╰─AUGC───A╯                                  
+
+row 0: TetraLoop  Stem  AlphaKissingLoop  Dovetail  Stem  KissingDimer  Stem  Dovetail  Stem  AlphaKissingLoop  Pepper  TetraLoop
+row 1: TetraLoop  Stem  Dovetail  Stem  Dovetail  Stem  start_end_stem  Stem  Dovetail  Stem  Dovetail  Stem  TetraLoop
+row 2: TetraLoop  Stem  AlphaKissingLoop  Dovetail  Stem  KissingDimer  Stem  Dovetail  Stem  AlphaKissingLoop  Pepper  TetraLoop
+Row 2: Dovetail overlaps Stem
+

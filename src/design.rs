@@ -5,7 +5,7 @@ use rand::RngExt;
 use rand::seq::IndexedRandom;
 use rayon::prelude::*;
 
-use crate::cleanup::{diversify_sequence, gc_cleanup};
+use crate::cleanup::{diversify_sequence, gc_cleanup, flip_restriction_sites};
 use crate::config::{GC_TEST, GC_THRESHOLD, RIBOSOMAL_RNA};
 use crate::decomposition::decompose;
 use crate::folding::{bp_distance_to_target, ensemble_diversity};
@@ -806,7 +806,7 @@ pub fn decomposed_hill_climb_design(
         full_seq
     };
 
-    let full_seq = if RIBOSOMAL_RNA || GC_TEST {
+    let mut full_seq = if RIBOSOMAL_RNA || GC_TEST {
         println!("Skipping GC cleanup");
         full_seq
     } else {
@@ -817,6 +817,15 @@ pub fn decomposed_hill_climb_design(
             GC_THRESHOLD,
         )
     };
+
+   let (new_seq, _unfixed) = flip_restriction_sites(
+            &full_seq,
+            &start_seq,
+            &target,
+            40.0,
+            "utils/restriction_motifs.txt",
+        ).map_err(|e| format!("failed to remove restriction sites: {e}"))?;
+    full_seq = new_seq;
 
     let result_no_pk = bp_distance_to_target(&full_seq, target);
 

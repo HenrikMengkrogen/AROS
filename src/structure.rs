@@ -32,10 +32,25 @@ pub fn get_pair_map(structure: &str) -> HashMap<usize, usize> {
     pair_map
 }
 
+
+
+
 pub fn strip_pseudoknots(s: &str) -> String {
     s.chars()
         .map(|c| match c {
             '[' | ']' => '.',
+            '{' => '(',
+            '}' => ')',
+            _ => c,
+        })
+        .collect()
+}
+
+pub fn remove_curly_brackets(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '{' => '(',
+            '}' => ')',
             _ => c,
         })
         .collect()

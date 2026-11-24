@@ -24,7 +24,7 @@ use crate::io::{
 };
 use crate::ml::{call_model, pretrain_ml_model, train_model};
 use crate::mutation::{insert_ribosome_sequence, mutate_ks};
-use crate::structure::get_pair_map;
+use crate::structure::{get_pair_map, remove_curly_brackets};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -134,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             call_model(input_path_str, n_starts)?;
             
 
-            let (seq, target_structure) = match read_input_file(input_path_str) {
+            let (seq, mut target_structure) = match read_input_file(input_path_str) {
                 Ok((seq, target)) => {
                     println!("Sequence : {}", seq);
                     println!("Structure: {}", target);
@@ -163,6 +163,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 Vec::new()
             };
+
+            target_structure = remove_curly_brackets(&target_structure); // Strips curly brackets off target structure
 
             let result = if RIBOSOMAL_RNA {
                 decomposed_hill_climb_design(
