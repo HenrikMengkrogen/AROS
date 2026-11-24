@@ -1,7 +1,7 @@
 [package]
-name = "Ribologic-RNA-sequence-generator"
+name = "AROS (Automated RNA Optimization by Slicing)"
 version = "0.1.0"
-edition = "2024"
+edition = "2026"
 build = "build.rs"
 
 [dependencies]

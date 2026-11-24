@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ribologic setup
+# AROS setup
 #
 # Supported:
 #   - macOS (Intel and Apple Silicon)
@@ -15,7 +15,7 @@
 ##############
 set -e
 
-echo "Setting up Ribologic environment..."
+echo "Setting up AROS environment..."
 
 # --------------------------------------------------
 # Check Python version
@@ -125,7 +125,7 @@ python -m pip install -r "$REQUIREMENTS"
 
 echo ""
 echo "===================================="
-echo "Ribologic environment ready!"
+echo "AROS environment ready!"
 echo "===================================="
 
 echo ""
@@ -167,7 +167,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 PROJECT_DIR="$(pwd)"
 VENDOR_DIR="$PROJECT_DIR/vendor/RNAlib"
 
-echo "Ribologic Setup"
+echo "AROS Setup"
 echo "================"
 echo ""
 

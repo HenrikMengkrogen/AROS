@@ -2,7 +2,7 @@
 
 set -e
 
-echo "Setting up Ribologic environment..."
+echo "Setting up AROS environment..."
 
 # --------------------------------------------------
 # Check Python version
@@ -104,7 +104,7 @@ python -m pip install -r "$REQUIREMENTS"
 
 echo ""
 echo "===================================="
-echo "Ribologic environment ready!"
+echo "AROS environment ready!"
 echo "===================================="
 
 echo ""
