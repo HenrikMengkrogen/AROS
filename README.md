@@ -1,9 +1,14 @@
-## Experimental pre-release -> README.md is not up to date yet
+## Experimental pre-release
 
-This release introduces parallel focused repair based on the complete
-candidate pool from the preceding multi-start repair stage.
+This release adds a neural-network seed model and introduces parallel
+focused repair based on the complete candidate pool from the preceding
+multi-start repair stage.
 
 ### Main changes
+- **New:** a constraint-aware neural network (transformer) proposes the
+  initial seed sequences that the design procedure starts from. It can be
+  trained on synthetic data and then improved from AROS's own designs
+  (see [Machine-learning seed model](#machine-learning-seed-model)).
 - Preserves candidates produced by the first focused repair.
 - Runs the next focused repair from each retained candidate in parallel.
 - Improves scoring and avoids unnecessary partition-function calculations.
@@ -21,7 +26,9 @@ RNA secondary structure in dot-bracket notation, it searches for
 sequences that fold into that structure. It uses ViennaRNA's
 minimum-free-energy (MFE) folding to score candidates, runs several
 rounds of a parallel multi-start hill-climbing design procedure, and
-reports the best results.
+reports the best results. Starting sequences can optionally be proposed
+by a small neural network (the **ML seed model**, written in Python and
+PyTorch) that respects the nucleotide constraints you give it.
 
 The program supports two sequence-generation modes:
 
@@ -31,6 +38,9 @@ The program supports two sequence-generation modes:
     -   `N` --- any nucleotide
     -   `K` --- `G` or `U`
     -   `S` --- `G` or `C`
+
+    The ML seed model additionally understands the other standard IUPAC
+    codes (`W`, `R`, `Y`, `M`, `B`, `D`, `H`, `V`).
 
 2.  **Generate from a preferred starting sequence** When
     `const RIBOSOMAL_RNA : bool = true;` is enabled in the program
@@ -44,25 +54,30 @@ The program supports two sequence-generation modes:
 
 Other features:
 
+-   Neural-network seed generation that satisfies your constraints by
+    construction, and can be retrained on AROS's own results.
 -   Configurable number of design rounds and parallel runs.
 -   Optional scrollable in-terminal viewer for the results, so you don't
     have to open multiple output files to find a candidate.
 -   Cross-platform: macOS (Intel and Apple Silicon), Linux, and Windows.
 
-> **Note:** The `Python/` folder and Python script are legacy files and
-> are not used by the current program.
+> **Note:** The `Python/` folder and its legacy Python script are not used
+> by the current program. The ML seed scripts (`ML_MODEL.py`,
+> `RUN_MODEL.py`, `train_model.py`) are separate and **are** used; see
+> below.
 
 ## How it works
 
-AROS designs sequences in four stages. It splits the target into
-nested **slices**, designs each slice with a hill-climbing search,
-repairs the assembled sequence globally, and finally verifies and
-annotates pseudoknots.
+AROS designs sequences in four stages, preceded by an optional seeding
+step. It splits the target into nested **slices**, designs each slice
+with a hill-climbing search, repairs the assembled sequence globally, and
+finally verifies and annotates pseudoknots.
 
 ```mermaid
 
 flowchart TD
-    A[Read input] --> B[Resolve K/S]
+    A[Read input] --> A2[ML seed model<br/>propose starting sequences]
+    A2 --> B[Resolve K/S]
     B --> C[Split nested slices]
     C --> D[Design slices<br/>children → parents]
     D --> E[Assemble sequence<br/>fill N/K/S]
@@ -79,6 +94,15 @@ flowchart TD
     J ~~~ K
 ```
 
+### 0. Seeding with the ML model
+
+Instead of starting from purely random fill-ins for `N`/`K`/`S` positions,
+the design can start from seeds sampled from a trained neural network.
+The model sees the target structure and your constraint string and
+proposes full sequences whose base pairs are all valid and whose fixed
+bases are untouched. These seeds give the hill-climbing search a better
+starting point than random nucleotides. The model is described in detail
+in [Machine-learning seed model](#machine-learning-seed-model).
 
 ### 1. Slicing the target
 
@@ -222,8 +246,8 @@ favour strong stems. The exit criteria are stricter on pair
 probabilities (0.1) and looser on distance (3--5), and the iteration
 count is clamped between 1 and 100.
 
-**GC-cleanup**. After the the final repairs all GC-pairs in the
-designable positions are attempted substidized for AU-pairs while
+**GC-cleanup**. After the final repairs all GC-pairs in the
+designable positions are attempted substituted for AU-pairs while
 keeping the base-pair distance unchanged, or reduced. This is to reduce
 the inflated GC-content which usually ends up at around 80% before this
 step.
@@ -241,6 +265,170 @@ structure for the ordinary nested pairs, plus the target's pseudoknot
 brackets where the sequence supports valid base pairs. It is **not** a
 full thermodynamic pseudoknot MFE prediction. PKplex output is the
 separate pseudoknot-oriented check.
+
+## Machine-learning seed model
+
+The seed model is a small transformer that learns, from RNA structures,
+which nucleotides tend to go where. Given a target structure and a
+constraint string, it samples full candidate sequences that AROS then
+uses as starting points. It does **not** replace the ViennaRNA-based
+design and repair: the seeds are only a head start, and every candidate is
+still folded and scored by ViennaRNA as described above.
+
+The model code lives in three Python files:
+
+| File | Purpose |
+|------|---------|
+| `ML_MODEL.py` | The model, constraint handling, data generation, and training/update routines |
+| `RUN_MODEL.py` | **Inference only.** Reads an AROS input file, samples seeds, writes a seed file |
+| `train_model.py` | Training driver: `pretrain` on synthetic data and `update` from AROS's own designs |
+
+### Requirements
+
+-   Python 3.12 (the scripts use a `python3.12` shebang)
+-   `pip install torch ViennaRNA` (the `RNA` Python module is used only
+    to label training data; PyTorch runs on CPU by default)
+
+### What the model does
+
+**Inputs per target:** a dot-bracket structure and a constraint string of
+the same length, using the same alphabet as the AROS input file:
+
+| Symbol | Meaning |
+|--------|---------|
+| `A` `C` `G` `U` | Known base, copied through unchanged |
+| `N` | Any base |
+| `S` | `G` or `C` (on both sides of a pair: a GC/CG pair) |
+| `K` | `G` or `U` (on both sides of a pair: a GU/UG wobble pair) |
+| `W` `R` `Y` `M` `B` `D` `H` `V` | Other IUPAC ambiguity codes |
+
+**Architecture.** Each position is described by its structure symbol
+(`.`, `(`, `)`), its loop context (external, hairpin, bulge/interior,
+multiloop, stem, stem end), its constraint code and its position. A
+4-layer transformer encoder (128 dimensions, 4 heads) processes these,
+with attention biased towards each base's pairing partner. Two output
+heads then predict:
+
+-   a nucleotide for every unpaired position, and
+-   one of the six pair types (`AU`, `UA`, `GC`, `CG`, `GU`, `UG`) for
+    every base pair, so both sides of a pair are sampled **jointly**.
+
+**Constraints are enforced by masking, not by hoping.** Before sampling,
+every option that violates the constraint string, or that is not a valid
+pair type for the two constraint characters, is masked out. Every sampled
+seed therefore satisfies your constraints, and every base pair in it is a
+valid pair. If a pair's two constraint characters allow no valid pair at
+all (for example `A`–`A`), that target is rejected as infeasible.
+
+### Generating seeds
+
+``` bash
+python3.12 RUN_MODEL.py --input misc/input_1.txt --output seeds.txt \
+    --n 16 --temp 1.0
+```
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `--input` | required | AROS input file (`Sequence :` / `Structure :` blocks; any number of targets) |
+| `--output` | required | Seed file to write |
+| `--n` | `16` | Seeds sampled per target |
+| `--temp` | `1.0` | Sampling temperature. Higher gives more diverse seeds, lower gives seeds closer to the model's top choice |
+| `--ckpt` | `checkpoints/best.pt` | Model checkpoint to use |
+| `--seed` | none | Set for reproducible seeds |
+
+The output contains `n` blocks per target in the same format as the
+input:
+
+```
+Sequence : GCGCAAAAGCGCAA...
+Structure : ((((....))))..
+```
+
+Exit codes (useful when called from another program): `0` success, `1`
+some targets failed but the others were still written, `2` fatal (no
+checkpoint, no targets parsed, or nothing written). Warnings and errors
+go to stderr; the summary line goes to stdout.
+
+**Input handling in `RUN_MODEL.py`:**
+
+-   Pseudoknot brackets `[` `]` are converted to dots, and `{` `}` are
+    converted to `(` `)`, before the model sees the structure. The model
+    therefore treats pseudoknot positions as unpaired and does not
+    design them as pairs; the pseudoknot handling stays with the main
+    AROS procedure (stage 4).
+-   Placeholder letters other than `A C G U N K S` are supported. An
+    uppercase placeholder (e.g. `X`) is replaced by a random sequence of
+    the length of its longest run, identically everywhere it appears. A
+    lowercase placeholder (e.g. `x`) is replaced by the reverse
+    complement of that same sequence, which makes it easy to specify
+    stems that must pair with each other.
+-   `T` is accepted in place of `U`.
+
+### Training the model
+
+You need a checkpoint at `checkpoints/best.pt` before seeds can be
+generated.
+
+**1. Pre-train on synthetic data**
+
+``` bash
+python3.12 train_model.py pretrain --n 20000 --epochs 30
+```
+
+Random sequences (80--400 nt, varying GC content) are folded with
+ViennaRNA, and the model learns to reproduce the sequence from its own
+MFE structure. Constraints are derived at random from each example every
+time it is batched, so the model learns to work with anything from fully
+unconstrained to heavily constrained input. Training uses a validation
+set and early stopping (`--patience`, default 4, active after epoch 5).
+It writes `checkpoints/best.pt` and `checkpoints/buffer.jsonl` (the
+replay data for later rounds). Because the constraints are re-randomised
+on each pass, validation loss is somewhat noisy.
+
+Other options: `--n_val` (validation examples, default 1000) and
+`--seed` (default 0).
+
+**2. Improve from AROS's own designs (self-training)**
+
+``` bash
+python3.12 train_model.py update --epochs 2
+```
+
+AROS writes the designs it produced to
+`Training_data/training_data_positive.txt` and
+`Training_data/training_data_negative.txt` (same `Sequence` / `Structure`
+format). `update` then performs one self-training round:
+
+-   **Hindsight relabeling.** Every design, including failed ones, is
+    paired with the structure it *actually folds into*, so failures still
+    become valid training examples. The original constraint string is kept
+    only if the design really solved its target; otherwise a random
+    constraint is derived.
+-   **Replay buffer with fresh synthetic data.** 30% fresh synthetic
+    examples (relative to buffer size) are mixed in each round to guard
+    against drift and collapse.
+-   **Versioned checkpoints.** The model is saved as
+    `checkpoints/round_XX.pt` (so a bad round can be rolled back) as well
+    as `checkpoints/best.pt`.
+-   **Archiving.** The consumed Rust files are moved to
+    `Training_data/archive/` with a timestamp, so the next round only
+    sees new designs.
+
+If `best.pt` is missing, `update` stops and asks you to run `pretrain`
+first. If there are no new designs, it does nothing.
+
+### Limitations
+
+-   Targets longer than **512 nucleotides** exceed the model's position
+    embedding (`maxlen=512`) and cannot be seeded without retraining a
+    larger model. Pre-training data covers 80--400 nt, so structures much
+    outside that range are less well supported.
+-   Pre-training uses structures that are MFE folds of random sequences,
+    so unusual target structures may be out of distribution. Self-training
+    on AROS's own designs is meant to close that gap over time.
+-   Pseudoknot pairs are not modelled (see above).
+-   Seeds are a starting point only; a seed that does not fold correctly
+    is expected and is improved by the normal AROS repair stages.
 
 ### Supported platforms
 
@@ -262,6 +450,10 @@ are pulled from your package manager (Homebrew or your Linux
 distribution's package manager). On Windows, all native libraries
 (including ViennaRNA) are built from source using MSYS2 MinGW64.
 
+The ML seed model requires a separate Python 3.12 environment with
+PyTorch and the ViennaRNA Python bindings (see
+[Machine-learning seed model](#machine-learning-seed-model)).
+
 ## Installation {#installation}
 
 ### Requirements
@@ -272,6 +464,8 @@ distribution's package manager). On Windows, all native libraries
 -   At least 2--3 GB of free disk space for Rust, compiler toolchains,
     downloaded packages, and native-library builds
 -   An Internet connection for the first setup run
+-   Python 3.12 with `torch` and `ViennaRNA` (`pip install torch ViennaRNA`)
+    if you want to use the ML seed model
 
 #### macOS
 
@@ -444,6 +638,10 @@ isn't already vendored.
 | Setup appears frozen during Windows installation                                     | The first run may download/install a large MinGW64 toolchain and build ViennaRNA. Let `pacman` and `make` finish.                                     |
 | Setup seems frozen on an Intel Mac                                                   | Homebrew may be compiling dependencies such as LLVM from source. This can take a long time.                                                           |
 | Program uses all CPU cores                                                           | Lower the number of parallel runs at the second prompt.                                                                                               |
+| `ERROR: checkpoint not found` from `RUN_MODEL.py`                                    | No trained model exists yet. Run `python3.12 train_model.py pretrain` to create `checkpoints/best.pt`.                                                |
+| `ModuleNotFoundError: torch` or `RNA`                                                | Install the Python dependencies: `pip install torch ViennaRNA`, using Python 3.12.                                                                    |
+| `WARNING: skipped target (...)` from `RUN_MODEL.py`                                  | The constraint string and structure differ in length, contain unsupported characters, or contain a base pair whose constraints allow no valid pair.   |
+| `no new designs from Rust, nothing to do` from `train_model.py update`               | `Training_data/training_data_positive.txt` and `..._negative.txt` are missing or empty. Run AROS first so it can write them.                          |
 
 ## Usage
 
@@ -474,6 +672,9 @@ Once the run has finished you can choose to view the results as a
 scrollable element in the terminal (y/n). This is useful for comparing
 candidates without opening multiple output files.
 
+To use ML-generated seeds, make sure a trained checkpoint exists first
+(see [Training the model](#training-the-model)).
+
 ### Input and output files
 
 Input files are located in:
@@ -501,6 +702,10 @@ Generated output files are written to:
 ```         
 misc/output/
 ```
+
+Seed files from the ML model (`RUN_MODEL.py`) use the same
+`Sequence` / `Structure` block format as the input files. Designs used to
+retrain the model are written to `Training_data/`.
 
 ## Example
 
@@ -537,7 +742,7 @@ run 4 was the best of the 10:
 ==== FINAL (run 4) ====
 sequence      : CUAUUACGCCCAACAUGAAACGAACUGGAAGCCACACCCGGUUCGCCGGGUGUGCCGUGCGAGACGGCCGGGUCCAUAGCUAAUUCGUUAGUUAUGUCGAGCAGAGUGUGGGCUCGUACGGGGUGGUGAAGCCUCCACGCCACCGCUUCCAGUUCGUUUCAUGUUGCGACUGAAGGAGGCACGGUCGGCCAUCCGUUUCGACGGGUGGCGGCGUAAUAG
 target        : (((((((((((((((((((((((((((((((((((((((((....)))))))))(((((((((.(.((...((((((((((((....)))))))))..)).)...))...).)))))))))(((((((..[[[[[[.)))))))))))))))))))))))))))))((((((..]]]]]].))))))(((((((((....)))))))))))))))))))
-mfe structure : (((((((((((((((((((((((((((((((((((((((((....)))))))))(((((((((.(.((...((((((((((((....)))))))))..)).)...))...).)))))))))(((((((..[[[[[[.)))))))))))))))))))))))))))))((((((..]]]]]].))))))(((((((((....)))))))))))))))))))
+mfe structure : (((((((((((((((((((((((((((((((((((((((....)))))))))(((((((((.(.((...((((((((((((....)))))))))..)).)...))...).)))))))))(((((((..[[[[[[.)))))))))))))))))))))))))))))((((((..]]]]]].))))))(((((((((....)))))))))))))))))))
 bp_distance   : 0
 mfe           : -110.40
 slices        : 12
@@ -564,6 +769,16 @@ ambiguous nucleotides, set `const RIBOSOMAL_RNA: bool = true;` in
 `const RIBOSOME_SEQUENCE: &str = "...";`. Then rebuild and run with
 `cargo run --release` (or `cargo run` for a debug build, which is
 slower).
+
+**Using ML seeds**: to preview what the model proposes for the same
+input, run
+
+``` bash
+python3.12 RUN_MODEL.py --input misc/input_1.txt --output seeds.txt --n 8
+```
+
+and inspect `seeds.txt`. Each block is one candidate starting sequence for
+the target, with every fixed base preserved and every base pair valid.
 
 ## Contributing
 
@@ -613,6 +828,12 @@ The Rust build script (`build.rs`) selects the correct prebuilt library
 directory for the current target platform and expects the ViennaRNA
 headers in `vendor/RNAlib/include/ViennaRNA`.
 
+### Python dependencies (ML seed model)
+
+-   **PyTorch** (`torch`) --- the transformer model and training
+-   **ViennaRNA Python bindings** (`ViennaRNA`, imported as `RNA`) ---
+    folding used to label training data
+
 ### Continuous integration
 
 The GitHub mirror runs `.github/workflows/test-all-platforms.yml`, which
@@ -641,6 +862,17 @@ AROS-rna-sequence-generator/
 ├── wrapper.h
 ├── src/
 │   └── main.rs
+├── ML_MODEL.py                     # seed model, constraints, training routines
+├── RUN_MODEL.py                    # inference: input file -> seed file
+├── train_model.py                  # pretrain / update driver
+├── checkpoints/                    # created by train_model.py
+│   ├── best.pt                     # model used for seed generation
+│   ├── round_XX.pt                 # versioned self-training rounds
+│   └── buffer.jsonl                # replay data for update rounds
+├── Training_data/                  # designs written by AROS for retraining
+│   ├── training_data_positive.txt
+│   ├── training_data_negative.txt
+│   └── archive/                    # consumed files, timestamped
 ├── misc/
 │   ├── input_*.txt
 │   └── output/
@@ -674,7 +906,8 @@ contributor(s): Henrik Mengkrogen
 
 This project builds on the [ViennaRNA
 Package](https://www.tbi.univie.ac.at/RNA/), and on the GMP, MPFR, and
-GSL libraries.
+GSL libraries. The ML seed model is built with
+[PyTorch](https://pytorch.org/).
 
 ## License
 
