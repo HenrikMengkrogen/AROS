@@ -48,7 +48,7 @@ jobs:
           suppress-deprecation-warnings: msystem-mingw64
 
           # Avoid collisions with the default runner-temp msys64 location.
-          location: ${{ runner.temp }}\msys64-ribologic
+          location: ${{ runner.temp }}\msys64-AROS
 
       # On macOS
       - name: Run setup, test, build and run
@@ -77,7 +77,7 @@ jobs:
           cargo test --locked --target "${{ matrix.target }}"
           cargo build -vv  --locked --target "${{ matrix.target }}"
               printf '1\n1\n' | valgrind --error-exitcode=1 --track-origins=yes \
-            target/"${{ matrix.target }}"/debug/Ribologic-RNA-sequence-generator
+            target/"${{ matrix.target }}"/debug/AROS
             cargo run --locked --target "${{ matrix.target }}"
 
 
