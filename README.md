@@ -13,7 +13,7 @@ This is a pre-release intended for testing. The previous stable release
 remains the recommended version for normal use.
 
 
-# Ribologic RNA Sequence Generator
+# AROS (Automated RNA Optimization By Slicing)
 
 A Rust-based RNA sequence design tool built on the
 [ViennaRNA](https://www.tbi.univie.ac.at/RNA/) library. Given a target
@@ -54,7 +54,7 @@ Other features:
 
 ## How it works
 
-Ribologic designs sequences in four stages. It splits the target into
+AROS designs sequences in four stages. It splits the target into
 nested **slices**, designs each slice with a hill-climbing search,
 repairs the assembled sequence globally, and finally verifies and
 annotates pseudoknots.
@@ -352,8 +352,8 @@ git lfs pull
 Clone the repository and run the setup script:
 
 ``` bash
-git clone https://gitlab.igem.org/2026/software/aarhus-university/ribologic-rna-sequence-generator.git
-cd ribologic-rna-sequence-generator
+git clone https://gitlab.igem.org/2026/software/aarhus-university/AROS-rna-sequence-generator.git
+cd AROS-rna-sequence-generator
 
 # Run setup in the current shell so Cargo and native-library environment
 # variables remain available immediately afterward.
@@ -383,8 +383,8 @@ source "$HOME/.cargo/env"
 Install the system requirements shown above, then clone the repository:
 
 ``` bash
-git clone https://gitlab.igem.org/2026/software/aarhus-university/ribologic-rna-sequence-generator.git
-cd ribologic-rna-sequence-generator
+git clone https://gitlab.igem.org/2026/software/aarhus-university/AROS-rna-sequence-generator.git
+cd AROS-rna-sequence-generator
 
 # `source` keeps PATH and other setup environment variables in this shell.
 source ./setup.sh
@@ -415,8 +415,8 @@ isn't already vendored.
 4.  Clone the repository and run the setup script:
 
     ``` bash
-    git clone https://gitlab.igem.org/2026/software/aarhus-university/ribologic-rna-sequence-generator.git
-    cd ribologic-rna-sequence-generator
+    git clone https://gitlab.igem.org/2026/software/aarhus-university/AROS-rna-sequence-generator.git
+    cd AROS-rna-sequence-generator
     source ./setup.sh
     ```
 
@@ -519,7 +519,7 @@ The sequence and structure must be the same length.
 ```         
 $ cargo run
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.23s
-     Running `target/debug/Ribosome_mut_program`
+     Running `target/debug/AROS`
 ========================================
 RNA design configuration
 Press Enter to accept a default value.
@@ -632,7 +632,7 @@ ViennaRNA and native dependencies, and runs both `cargo test` and
 ### Project structure
 
 ```         
-ribologic-rna-sequence-generator/
+AROS-rna-sequence-generator/
 ├── Cargo.toml
 ├── Cargo.lock
 ├── build.rs
